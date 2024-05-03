@@ -3,6 +3,9 @@
 #include <ctype.h>
 #include <string.h>
 
+/**
+ * Read Source code from 'source' file
+*/
 FILE *readSource(char *filename)
 {
     FILE *program;
@@ -17,21 +20,27 @@ FILE *readSource(char *filename)
     return program;
 }
 
+/**
+ * Print the contents of the source file
+*/
 void printSource(FILE *program)
 {
     char ch;
     long initialPosition = ftell(program);
 
-    printf("\n=> Source Code\n");
+    printf("\n---- [ Source Code ] ----\n\n");
     while ((ch = fgetc(program)) != EOF)
     {
         putchar(ch);
     }
-    printf("\n");
+    printf("\n\n");
 
     fseek(program, initialPosition, SEEK_SET);
 }
 
+/**
+ * Write the tokens/intermediate code to a file
+*/
 void writeStage1(int op, int num, int line_number)
 {
     FILE *stage1;
@@ -48,9 +57,12 @@ void writeStage1(int op, int num, int line_number)
     fclose(stage1);
 }
 
+/**
+ * Convert source code to tokens
+*/
 void generateTokens(FILE *program)
 {
-    printf("\n=> Starting token generation\n");
+    printf("\n---- [ Tokens ] ----\n\n");
 
     char ch;
     int line_number = 1;
@@ -69,6 +81,19 @@ void generateTokens(FILE *program)
         {
             line_number += 1;
             ch = fgetc(program);
+            continue;
+        }
+
+        if (ch == '#')
+        {
+            while (ch != '\n')
+            {
+                if (ch == EOF)
+                {
+                    break;
+                }
+                ch = fgetc(program);
+            }
             continue;
         }
 
@@ -97,15 +122,25 @@ void generateTokens(FILE *program)
             continue;
         }
 
+        if (ch == '-')
+        {
+            printf("'SUB', '-', %d\n", line_number);
+            writeStage1(2, 0, line_number);
+            ch = fgetc(program);
+            continue;
+        }
+
         putchar(ch);
         ch = fgetc(program);
     }
 
-    printf("\n");
-
     fseek(program, initialPosition, SEEK_SET);
+    printf("\n");
 }
 
+/**
+ * Read tokens from the intermediatory file
+*/
 int **readTokens(char *filename, int *rows, int *cols)
 {
     FILE *file = fopen(filename, "r");
@@ -180,6 +215,10 @@ int **readTokens(char *filename, int *rows, int *cols)
     return data;
 }
 
+
+/**
+ * Print tokens on the screen
+*/
 void printTokens(int **data, int rows, int cols)
 {
     for (int i = 0; i < rows; i++)
@@ -192,6 +231,9 @@ void printTokens(int **data, int rows, int cols)
     }
 }
 
+/**
+ * Write assembly code to a file
+*/
 void writeAssembly(char *a, char *b, char *c)
 {
     FILE *assembly;
@@ -204,46 +246,78 @@ void writeAssembly(char *a, char *b, char *c)
     }
 
     fprintf(assembly, "%-10s %-10s %-10s\n", a, b, c);
+    printf("%-12s %-12s %-12s\n", a, b, c);
 
     fclose(assembly);
 }
 
+/**
+ * Generate assembly program from the tokens
+*/
 void generateAssembly(int **tokens, int rows, int cols)
 {
-    char str_num[8], str_line_num[8];
+    char str_num[16], str_line_num[16];
+    printf("\n---- [ Assembly ] ----\n\n");
 
-    writeAssembly("", "global", "_start");
-    writeAssembly("", "section", ".text");
+    writeAssembly("global", "_start", "");
+    writeAssembly("section", ".text", "");
+    writeAssembly("", "", "");
     writeAssembly("_start:", "", "");
 
     for (int i = 0; i < rows; i++)
     {
-        if (tokens[i][0] == 0)
+        switch (tokens[i][0])
         {
+        case 0:
+            // Code for INT token
             sprintf(str_num, "rax, %d", tokens[i][1]);
-            sprintf(str_line_num, "; line %d: push int", tokens[i][2]);
+            sprintf(str_line_num, " ; line %d: push int", tokens[i][2]);
 
-            writeAssembly("", str_line_num, "");
+            writeAssembly("\n", str_line_num, "");
             writeAssembly("", "mov", str_num);
             writeAssembly("", "push", "rax");
-        }
-        else if (tokens[i][0] == 1)
-        {
-            sprintf(str_line_num, "; line %d: add", tokens[i][2]);
-            writeAssembly("", str_line_num, "");
+            break;
+
+        case 1:
+            // Code for ADD token
+            sprintf(str_line_num, " ; line %d: add", tokens[i][2]);
+            writeAssembly("\n", str_line_num, "");
             writeAssembly("", "pop", "rax");
             writeAssembly("", "pop", "rbx");
             writeAssembly("", "add", "rbx, rax");
             writeAssembly("", "push", "rbx");
+            break;
+
+        case 2:
+            // Code for SUB token
+            sprintf(str_line_num, " ; line %d: sub", tokens[i][2]);
+            writeAssembly("\n", str_line_num, "");
+            writeAssembly("", "pop", "rax");
+            writeAssembly("", "pop", "rbx");
+            writeAssembly("", "sub", "rbx, rax");
+            writeAssembly("", "push", "rbx");
+            break;
+
+        default:
+            // Code for Unknown Token
+            printf("Unknown token %d.", tokens[i][0]);
+            exit(0);
+            break;
         }
     }
 
+    writeAssembly("", "", "");
     writeAssembly("exit:", "", "");
     writeAssembly("", "mov", "rax, 60");
     writeAssembly("", "pop", "rdi");
     writeAssembly("", "syscall", "");
+
+    printf("\n");
 }
 
+/**
+ * Start of the program
+*/
 int main()
 {
     printf("\nThis is a compiler for AD Programming Language.\n");
@@ -269,7 +343,6 @@ int main()
      */
     int rows, cols;
     int **tokens = readTokens("stage1", &rows, &cols);
-    printTokens(tokens, rows, cols);
 
     /**
      * Generate Assembly
@@ -280,7 +353,7 @@ int main()
      * Gracefull close
      */
     fclose(program);
-
+    
     for (int i = 0; i < rows; i++)
     {
         free(tokens[i]);

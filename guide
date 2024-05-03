@@ -1,2 +1,8 @@
 0 - INT
 1 - ADD
+2 - SUB
+
+Sample Program:
+'''
+45 8 +
+'''

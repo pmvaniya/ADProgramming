@@ -1,0 +1,5 @@
+compiler.out
+stage1
+assembly.asm
+machine.o
+machine

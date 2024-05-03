@@ -2,11 +2,9 @@
 
 all: clean compile
 
-compiler.out: compiler.c
+compile:
 	gcc compiler.c -o compiler.out
-
-compile: compiler.out
-	-./compiler.out
+	./compiler.out
 	nasm -felf64 assembly.asm -o machine.o
 	ld machine.o -o machine
 
